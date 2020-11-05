@@ -48,9 +48,7 @@ if __name__ == '__main__':
     tmp_list = []
 
     for i,f in enumerate(files):
-        if (i<=587):
-            pass
-        elif (i%10)==9:
+        if (i%10)==9:
             #古いリストをsplitted_filesに入れる
             splitted_files.append(tmp_list)
             #リストを新しく作ってファイルを入れる
@@ -85,8 +83,19 @@ if __name__ == '__main__':
     for i,flist in enumerate(splitted_files):
         #解凍
         for f in tqdm(flist):
+            # ファイルをオープンする
+            test_data = open("inserted.txt", "r")
+
+            # 行ごとにすべて読み込んでリストデータにする
+            lines = test_data.readlines()
+            #print(lines[0])
+            if(str(f)+"\n" in lines):
+                print(str(f))
+                continue
+
             with open("inserted.txt", mode='a') as fa:
                 fa.write(str(f)+"\n")
+
             with gzip.open(f,mode = 'rt') as fp:
                 lst = [json.loads(s) for s in fp.read().splitlines()]
     
