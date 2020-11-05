@@ -8,13 +8,35 @@ import re
 
 def get_keyword (text,para,keynum):
     #print(text)
-    words = split_stem(text)
+    es = Elasticsearch("http://localhost:9200")
+    words = split_stem(text,es)
+    print(es.indices.exists(index="us"))
+    
+    _body = {
+       "query": { "match_all": {} }
+    }
+    """
+    _body = {
+        "query": {
+            "match": {"text":  words}
+        },
+        "_source": ["docid", "text", "title"]
+    }
+    """
+    query = es.search(index='us', body=_body, size=1, request_timeout=150)
+    print(query)
+
+    #doc_id = query['hits']['hits'][0]['_id']
+    #query = es.explain(index='clef', body=_body, id=doc_id)
+
+
     return ["a","b","c","d"]
 
 
-def split_stem(text):
-    # inputされた文を語幹に分割してSTEMフォルダにpickleで保存
-    es = Elasticsearch("http://localhost:9200")
+def split_stem(text,es):
+    """
+    inputされた文を語幹に分割してSTEMフォルダにpickleで保存
+    """
 
     # elasticsearch analyzerのmax_token_sizeは10000なので,まずsentenceに分割してからstemmingする
 
@@ -54,14 +76,3 @@ def split_stem(text):
             words.extend(stem_list)
 
     return words
-    '''
-    # elasticsearch analyzerのmax_token_sizeは10000なので,スペース9000区切りで分割する
-    stem_list = []
-    _body = {"analyzer": "english", "text": sentence}
-    query = es.indices.analyze(body=_body)
-    for token_info in query['tokens']:
-        tmp = (re.sub(r'[0-9]+', "0", token_info['token']))   # 数値は0に置換して語幹をsterm_listへ
-        stem_list.append(tmp)
-
-    return stem_list
-    '''
