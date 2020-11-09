@@ -7,6 +7,7 @@ from elasticsearch import Elasticsearch
 import re
 import json
 import collections
+from operator import itemgetter
 
 def get_keyword (text,para,keynum):
     #print(text)
@@ -17,38 +18,80 @@ def get_keyword (text,para,keynum):
     values_idf = []
     #100単語ずつ検索
     for i in range(int(len(values)/100)+1):
-        if i == len(values)/100 :
+        hit_count = -1 
+        copy_values = values
+        flg = True
+        if i == len(copy_values)/100 :
             # 最後の要素は100個以下なため別処理
-            tmp_values = values[i*100 :]
+            tmp_values = copy_values[i*100 :]
         else:
-            tmp_values = values[i*100 : (i+1)*100-1]
+            tmp_values = copy_values[i*100 : (i+1)*100-1]
+        while flg:
+            if len(tmp_values)==0:
+                flg = False
+                continue
+            #検索上位1件にhitした特許に含まれる文字列のみしかidf求められないのでループ
+            
+            words_query = ' '.join(tmp_values)
+            #今は "description.DETAILED_DESC.plain"で。いずれ、"description.BRIEF_SUMMARY.plain", "description.DETAILED_DESC.plain"]
 
-        words_query = mojiretu = ' '.join(tmp_values)
-        #今は "description.DETAILED_DESC.plain"で。いずれ、"description.BRIEF_SUMMARY.plain", "description.DETAILED_DESC.plain"]
-
-        _body = {
-            "query": {
-                "multi_match": {
-                    "fields": ["description.DETAILED_DESC.plain"],
-                    "query": words_query 
+            _body = {
+                "query": {
+                    "multi_match": {
+                        "fields": ["description.DETAILED_DESC.plain"],
+                        "query": words_query 
+                    }
                 }
-        }
-        }
-        # IDFを求めるために適当なdocidのクエリを指定
-        query = es.search(index='clef', body=_body, size=1, request_timeout=150)
-        docid = query['hits']['hits'][0]["_source"]["documentId"]
+            }
+            # IDFを求めるために適当なdocidのクエリを指定
+            #何もhitしなかった時の条件を追加する
+            query = es.search(index='clef', body=_body, size=1, request_timeout=150)
+            try:
+                docid = query['hits']['hits'][0]["_source"]["documentId"]
+            except IndexError:
+                break
+            query = es.explain(index='clef', id = docid,body=_body, request_timeout=150)
+            #print(json.dumps(query['explanation'],indent=2))
 
-        query = es.explain(index='clef', id = docid,body=_body, request_timeout=150)
-    
-        #print(json.dumps(query['explanation'],indent=2))
-        for j in range(len(query['explanation']["details"])):
-            tmp = query['explanation']["details"][j]["description"]
-            word = tmp[tmp.find(":")+1 : tmp.find(' ')]
-            idf = query['explanation']["details"][j]["details"][0]["details"][1]["value"]
-            values_idf.append((word,idf))
-        print(values_idf)
+            for j in range(len(query['explanation']["details"])):
+                if len(tmp_values)!=1:
+                    tmp = query['explanation']["details"][j]["description"]
+                    idf = query['explanation']["details"][j]["details"][0]["details"][1]["value"]
+                else:
+                    tmp = query['explanation']["description"]
+                    idf = query["explanation"]["details"][0]["details"][1]["value"]
+                word = tmp[tmp.find(":")+1 : tmp.find(' ')]
+                values_idf.append((word,idf))
+                # idfが得られたwordを削除
+                l = list(tmp_values)
+                l.remove(word)
+                tmp_values = tuple(l)
+    #print(values_idf)
+    #tf 算出 tf = freq / (freq + k1 * (1 - b + b * dl / avgdl
+    """
+    "freq, occurrences of term within document"
+    "k1, term saturation parameter"=1.2
+    "b, length normalization parameter"=0.75
+    "dl, length of field (approximate)"=フィールドの長さ=textの長さ
+    "avgdl, average length of field"=6678.976 !!全部入力後要変更
+    """
+    k1 = 1.2
+    b = 0.75
+    dl = len(text)
+    avgdl = 6678.976
 
-        exit()
+    tfidf_data = []
+    for value in(values_idf):
+        #各単語ごと
+        freq = words_fix[value[0]]
+        tf = freq / (freq + k1 * (1 - b + b * dl / avgdl))
+        tmp = (value[0], tf, value[1], tf*value[1])
+        tfidf_data.append(tmp)
+    tdfidf_data = sorted(tfidf_data, key=itemgetter(3),reverse=True)    #tfidf順にソート
+
+
+
+
 
 
     #print(json.dumps(query['explanation']['details'][0]['details'][0], indent=2))
@@ -58,7 +101,8 @@ def get_keyword (text,para,keynum):
     #query = es.explain(index='clef', body=_body, id=doc_id)
 
 
-    return ["a","b","c","d"]
+    return (tfidf_data[:100])
+
 
     
 
@@ -72,7 +116,6 @@ def split_stem(text,es):
 
     sentences = text.split(".")  #カンマ区切りで分割
 
-    print(sentences)
     words = []  #textに出力する文字のstem一覧
     for sen in enumerate(sentences):
         x = "stemming" # stemming / no_stemming
@@ -96,7 +139,6 @@ def split_stem(text,es):
             stem_list = []
             _body = {"analyzer": "english", "text": sen}
             query = es.indices.analyze(body=_body)
-            print(query)
             #_body = {"analyzer": {"rebuilt_english": {"tokenizer":  "standard","filter": ["lowercase","english_stop","english_keywords"]}}, "text": sen}
             #query = es.indices.analyze(body=mapping)
             for token_info in query['tokens']:

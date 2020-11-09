@@ -1,5 +1,6 @@
 from query_input.query_input import get_querydata
 from keyword_extraction.keyword_extraction import get_keyword
+from ela_search.ela_search import priorartsearch
 
 if __name__ == '__main__':
     # clefもしくはntcirのクエリを整形
@@ -12,4 +13,10 @@ if __name__ == '__main__':
     for i, docid in enumerate(docid_list):
         keywords = get_keyword(querydocument_list[i],para,keynum)
         #print(keywords)
-        exit()
+        tmp_keywords = []
+        for keyword in(keywords):
+            tmp_keywords.append(keyword[0])
+        #print(tmp_keywords)
+        priorartsearch(tmp_keywords)
+
+  
