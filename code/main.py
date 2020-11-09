@@ -11,5 +11,5 @@ if __name__ == '__main__':
     keynum = 100    #検索に使用する上位keynum件のキーワード
     for i, docid in enumerate(docid_list):
         keywords = get_keyword(querydocument_list[i],para,keynum)
-        print(keywords)
+        #print(keywords)
         exit()
