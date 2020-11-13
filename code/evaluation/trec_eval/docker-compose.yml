@@ -1,0 +1,7 @@
+version: '3'
+services:
+   app:
+      build: .
+      volumes:
+              -  /Users/higashi/study/2020/patent_prior-art_search/docker/python/patent_priot-art_search/code/evaluation/trec_eval:/workplace
+      working_dir: /workplace

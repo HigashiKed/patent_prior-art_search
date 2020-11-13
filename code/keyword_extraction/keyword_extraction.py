@@ -12,13 +12,14 @@ from operator import itemgetter
 def get_keyword (text,para,keynum):
     #print(text)
     es = Elasticsearch("http://localhost:9200")
+    index_name = 'clef_patent'
     words = split_stem(text,es)
     words_fix = collections.Counter(words)  #重複数カウント
     values, counts = zip(*words_fix.most_common())  #valuesは重複削除したワード,countsは重複削除した出現回数
     values_idf = []
     #100単語ずつ検索
     for i in range(int(len(values)/100)+1):
-        hit_count = -1 
+        prev_docid = ""
         copy_values = values
         flg = True
         if i == len(copy_values)/100 :
@@ -33,38 +34,47 @@ def get_keyword (text,para,keynum):
             #検索上位1件にhitした特許に含まれる文字列のみしかidf求められないのでループ
             
             words_query = ' '.join(tmp_values)
-            #今は "description.DETAILED_DESC.plain"で。いずれ、"description.BRIEF_SUMMARY.plain", "description.DETAILED_DESC.plain"]
-
+            #今は "description.p"で。いずれ、"abstract.p", "dclaim.text"]
             _body = {
                 "query": {
                     "multi_match": {
-                        "fields": ["description.DETAILED_DESC.plain"],
+                        "fields": ["description.p"],
                         "query": words_query 
                     }
                 }
             }
             # IDFを求めるために適当なdocidのクエリを指定
             #何もhitしなかった時の条件を追加する
-            query = es.search(index='clef', body=_body, size=1, request_timeout=150)
+            query = es.search(index=index_name, body=_body, size=1, request_timeout=150)
             try:
-                docid = query['hits']['hits'][0]["_source"]["documentId"]
+                docid = query['hits']['hits'][0]["_source"]["ucid"]
+                if docid == prev_docid:
+                    break
             except IndexError:
                 break
-            query = es.explain(index='clef', id = docid,body=_body, request_timeout=150)
-            #print(json.dumps(query['explanation'],indent=2))
-
+            prev_docid = docid
+            query = es.explain(index=index_name, id = docid,body=_body, request_timeout=150)
+            #print(json.dumps(query,indent =2))
             for j in range(len(query['explanation']["details"])):
-                if len(tmp_values)!=1:
+                #print(tmp_values)
+                #if len(tmp_values)!=1:
+                #残り1単語の時
+                try:
                     tmp = query['explanation']["details"][j]["description"]
                     idf = query['explanation']["details"][j]["details"][0]["details"][1]["value"]
-                else:
+                except IndexError:
                     tmp = query['explanation']["description"]
                     idf = query["explanation"]["details"][0]["details"][1]["value"]
                 word = tmp[tmp.find(":")+1 : tmp.find(' ')]
                 values_idf.append((word,idf))
                 # idfが得られたwordを削除
+                #print(word)
+                #print(tmp_values)
                 l = list(tmp_values)
-                l.remove(word)
+                try:
+                    l.remove(word)
+                except ValueError:
+                    pass
                 tmp_values = tuple(l)
     #print(values_idf)
     #tf 算出 tf = freq / (freq + k1 * (1 - b + b * dl / avgdl

@@ -1,39 +1,38 @@
 '''
-input: keywords:キーワードのリスト   任意のクエリに改良する
+input: keywords:キーワードのリスト   任意のクエリに改良する,docid:クエリのid
 output: 上位100件の類似特許
 '''
 from elasticsearch import Elasticsearch
+import json
 
-def priorartsearch (keywords):
+def priorartsearch (keywords,docid):
     es = Elasticsearch("http://localhost:9200")
-    index_name = 'clef'
+    index_name = 'clef_patent'
+    write_file = '../result/test.prel'
     keywords_query = ' '.join(keywords)
-    docid_list = []
+    search_list = []
     _body = {
         "query": {
             "multi_match": {
-                "fields": [ "description.BRIEF_SUMMARY.plain", "description.DETAILED_DESC.plain"],
+                "fields": ["description.p"],
                 "query": keywords_query
             }
        },
-       "_source" : ["documentId","title","description"]
+       "_source" : ["ucid","description"]
     }
     query = es.search(index=index_name, body=_body, size = 100,request_timeout=150)
     for i in range(100):
-        print(query['hits']['hits'][i]['_source']['documentId'])
-        docid_list.append(query['hits']['hits'][i]['_source']['documentId'])
-    print(docid_list)
-    exit()
-    """
-    with open('../result/' + param + '/stopword_fixed/' + param + '_keynum' + str(keynum) + '_simnum' + str(simnum) + '.prel', 1'a') as f:
-        for j in range(simnum):
-            text = str(docid_list[int(args[1]) + i])\
+        search_list.append([query['hits']['hits'][i]['_source']['ucid'],query['hits']['hits'][i]['_score']])
+    print(search_list)
+
+    with open(write_file, mode='a') as f:
+        for j,search in enumerate(search_list):
+            text = str(docid)\
                 + ' Q0 '\
-                + str(query['hits']['hits'][j]['_source']['docid'])\
+                + str(search[0].replace( '-' , '' ))\
                 + ' '\
                 + str(j + 1)\
                 + ' '\
-                + str(query['hits']['hits'][j]['_score'])\
+                + str(search[1])\
                 + ' STANDARD\n'
             f.write(text)
-    """

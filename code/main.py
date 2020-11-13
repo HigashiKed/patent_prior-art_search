@@ -11,12 +11,13 @@ if __name__ == '__main__':
     para = 'TFIDF'  #TFIDFかMultipartiteRankの想定
     keynum = 100    #検索に使用する上位keynum件のキーワード
     for i, docid in enumerate(docid_list):
+        #キーワード取得
         keywords = get_keyword(querydocument_list[i],para,keynum)
-        #print(keywords)
         tmp_keywords = []
+        #elasticsearchのor検索は、キーワードをスペース区切りで並べるため改良
         for keyword in(keywords):
             tmp_keywords.append(keyword[0])
         #print(tmp_keywords)
-        priorartsearch(tmp_keywords)
+        priorartsearch(tmp_keywords,docid)
 
   
