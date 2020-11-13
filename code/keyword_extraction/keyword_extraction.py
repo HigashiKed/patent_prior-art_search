@@ -34,7 +34,7 @@ def get_keyword (text,para,keynum):
             #検索上位1件にhitした特許に含まれる文字列のみしかidf求められないのでループ
             
             words_query = ' '.join(tmp_values)
-            #今は "description.p"で。いずれ、"abstract.p", "dclaim.text"]
+            #今は "description.p"で。いずれ、"abstract.p", "claim.text"]
             _body = {
                 "query": {
                     "multi_match": {
@@ -54,7 +54,7 @@ def get_keyword (text,para,keynum):
                 break
             prev_docid = docid
             query = es.explain(index=index_name, id = docid,body=_body, request_timeout=150)
-            #print(json.dumps(query,indent =2))
+ 
             for j in range(len(query['explanation']["details"])):
                 #print(tmp_values)
                 #if len(tmp_values)!=1:
@@ -83,12 +83,12 @@ def get_keyword (text,para,keynum):
     "k1, term saturation parameter"=1.2
     "b, length normalization parameter"=0.75
     "dl, length of field (approximate)"=フィールドの長さ=textの長さ
-    "avgdl, average length of field"=6678.976 !!全部入力後要変更
+    "avgdl, average length of field"=2865.817 !!全部入力後要変更
     """
     k1 = 1.2
     b = 0.75
     dl = len(text)
-    avgdl = 6678.976
+    avgdl = 2865.817 
 
     tfidf_data = []
     for value in(values_idf):

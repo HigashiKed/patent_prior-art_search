@@ -17,7 +17,8 @@ if __name__ == '__main__':
         #elasticsearchのor検索は、キーワードをスペース区切りで並べるため改良
         for keyword in(keywords):
             tmp_keywords.append(keyword[0])
-        #print(tmp_keywords)
+        print(tmp_keywords)
+        exit()
         priorartsearch(tmp_keywords,docid)
 
   
