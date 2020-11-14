@@ -1,11 +1,14 @@
 from query_input.query_input import get_querydata
 from keyword_extraction.keyword_extraction import get_keyword
 from ela_search.ela_search import priorartsearch
+import time
 
 if __name__ == '__main__':
     # clefもしくはntcirのクエリを整形
+    start = time.time()
     param = 'clef'
     querydocument_list, docid_list, title_list = get_querydata(param)
+    keywordlist_memo = "keyword_list.txt"
 
     #1クエリ毎に上位keynum件のkeywordを得る
     para = 'TFIDF'  #TFIDFかMultipartiteRankの想定
@@ -18,7 +21,11 @@ if __name__ == '__main__':
         for keyword in(keywords):
             tmp_keywords.append(keyword[0])
         print(tmp_keywords)
-        exit()
+        with open(keywordlist_memo, mode='a') as f:
+            f.write(docid+"\n"+str(tmp_keywords))
+            f.write("\n")
         priorartsearch(tmp_keywords,docid)
-
+    process_time = time.time() - start
+    print("実行時間")
+    print(process_time)
   

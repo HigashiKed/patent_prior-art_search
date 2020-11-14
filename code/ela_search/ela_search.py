@@ -8,7 +8,7 @@ import json
 def priorartsearch (keywords,docid):
     es = Elasticsearch("http://localhost:9200")
     index_name = 'clef_patent'
-    write_file = '../result/TFiDF_normal.prel'
+    write_file = '../result/TFiDF_normal2.prel'
     keywords_query = ' '.join(keywords)
     search_list = []
     _body = {

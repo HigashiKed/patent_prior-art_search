@@ -8,6 +8,7 @@ import re
 import json
 import collections
 from operator import itemgetter
+import nltk
 
 def get_keyword (text,para,keynum):
     #print(text)
@@ -136,7 +137,10 @@ def split_stem(text,es):
             query = es.indices.analyze(body=_body)
             for token_info in query['tokens']:
                 tmp = (re.sub(r'[0-9]+', "0", token_info['token']))   # 数値や空白は0に置換して語幹をsterm_listへ
-                stem_list.append(tmp)
+                if tmp not in stopwords():  # stopword除去
+                    if not len(tmp)==1:
+                        #1文字は除外
+                        stem_list.append(tmp)
             stem_list = [n for n in stem_list if n!='0']    #0を削除
             #print(stem_list)
             words.extend(stem_list)
@@ -153,8 +157,16 @@ def split_stem(text,es):
             #query = es.indices.analyze(body=mapping)
             for token_info in query['tokens']:
                 tmp = (re.sub(r'[0-9]+', "0", token_info['token']))   # 数値や空白は0に置換して語幹をsterm_listへ
-                stem_list.append(tmp)
+                if tmp not in stopwords():  # stopword除去
+                    stem_list.append(tmp)
             stem_list = [n for n in stem_list if n!='0']    #0を削除
             words.extend(stem_list)
 
     return words
+
+def stopwords():
+    #nltk.download('stopwords')
+    symbols = ["'", '"', '`', '.', ',', '-', '!', '?', ':', ';', '(', ')', '*', '--', '\\']
+    stopwords = nltk.corpus.stopwords.words('english')
+    numeric = ['0']
+    return stopwords + symbols + numeric
