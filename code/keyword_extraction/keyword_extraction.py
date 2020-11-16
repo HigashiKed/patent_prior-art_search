@@ -114,11 +114,10 @@ def get_keyword (text,para,keynum,index_name):
         tf = freq / (freq + k1 * (1 - b + b * dl / avgdl))
         tmp = (value[0], tf, value[1], tf*value[1])
         tfidf_data.append(tmp)
-    #tfidf_data = sorted(tfidf_data, key=itemgetter(3),reverse=True)    #tfidf順にソート
-    #return (tfidf_data[:100])
+    tfidf_data = sorted(tfidf_data, key=itemgetter(3),reverse=True)    #tfidf順にソート
+    return (tfidf_data[:100])
 
-    tf_data = sorted(tfidf_data, key=itemgetter(1),reverse=True)    #tfidf順にソート
-    return (tf_data[:100])
+   
 
 
     
@@ -144,8 +143,8 @@ def split_stem(text,es):
             for token_info in query['tokens']:
                 tmp = (re.sub(r'[0-9]+', "0", token_info['token']))   # 数値や空白は0に置換して語幹をsterm_listへ
                 if tmp not in stopwords():  # stopword除去
-                    if not len(tmp)==1:
-                        #1文字は除外
+                    if re.search(r'[0-9]',tmp) is None:
+                        #数字が含まれない時
                         stem_list.append(tmp)
             stem_list = [n for n in stem_list if n!='0']    #0を削除
             #print(stem_list)
