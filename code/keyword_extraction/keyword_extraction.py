@@ -32,61 +32,53 @@ def get_keyword (text,para,keynum,index_name):
                 flg = False
                 continue
             #検索上位1件にhitした特許に含まれる文字列のみしかidf求められないのでループ
-            
-            words_query = ' '.join(tmp_values)
-            #今は "description.p"で。いずれ、"abstract.p","claims.claim"]
-            
-            if index_name=="clef_patent":
-                #今は "description.p"で。いずれ、"abstract.p","claims.claim"]
-                _body = {
-                    "query": {
-                        "multi_match": {
-                            "fields": ["description.p"],
-                            "query": words_query 
+            print(len(tmp_values))
+            for tmp_word in tmp_values:
+                if index_name=="clef_patent":
+                    #今は "description.p"で。いずれ、"abstract.p","claims.claim"]
+                    _body = {
+                        "query": {
+                            "multi_match": {
+                                "fields": ["description.p"],
+                                "query": tmp_word
+                            }
                         }
                     }
-                }
-            elif index_name=="clef_text":
-                _body = {
-                    "query": {
-                        "match": {
-                            "text" : words_query 
+                elif index_name=="clef_text":
+                    _body = {
+                        "query": {
+                            "match": {
+                                "text" : tmp_word
+                            }
                         }
                     }
-                }
             
 
-            # IDFを求めるために適当なdocidのクエリを指定
-            #何もhitしなかった時の条件を追加する
-            query = es.search(index=index_name, body=_body, size=1, request_timeout=150)
-            try:
-                docid = query['hits']['hits'][0]["_source"]["ucid"]
-                if docid == prev_docid:
-                    break
-            except IndexError:
-                break
-            prev_docid = docid
-            query = es.explain(index=index_name, id = docid,body=_body, request_timeout=150)
-            
-            for j in range(len(query['explanation']["details"])):
-                #print(tmp_values)
-                #if len(tmp_values)!=1:
-                #残り1単語の時
+                # IDFを求めるために適当なdocidのクエリを指定
+                #何もhitしなかった時の条件を追加する
+                query = es.search(index=index_name, body=_body, size=1, request_timeout=150)
                 try:
-                    tmp = query['explanation']["details"][j]["description"]
-                    idf = query['explanation']["details"][j]["details"][0]["details"][1]["value"]
+                    docid = query['hits']['hits'][0]["_source"]["ucid"]
                 except IndexError:
-                    tmp = query['explanation']["description"]
-                    idf = query["explanation"]["details"][0]["details"][1]["value"]
+                    l = list(tmp_values)
+                    l.remove(tmp_word)
+                    tmp_values = tuple(l)
+                    print("IndexError")
+                    continue
+                query = es.explain(index=index_name, id = docid,body=_body, request_timeout=150)
+            
+                tmp = query['explanation']["description"]
+                idf = query['explanation']["details"][0]["details"][1]["value"]
                 word = tmp[tmp.find(":")+1 : tmp.find(' ')]
-                values_idf.append((word,idf))
+                values_idf.append((tmp_word,idf))  #analyzeされる前の単語
                 # idfが得られたwordを削除
                 #print(word)
                 #print(tmp_values)
                 l = list(tmp_values)
                 try:
-                    l.remove(word)
+                    l.remove(tmp_word)
                 except ValueError:
+                    print("Valueerror")
                     pass
                 tmp_values = tuple(l)
     #print(values_idf)
@@ -159,8 +151,6 @@ def split_stem(text,es):
             stem_list = []
             _body = {"analyzer": "english", "text": sen}
             query = es.indices.analyze(body=_body)
-            #_body = {"analyzer": {"rebuilt_english": {"tokenizer":  "standard","filter": ["lowercase","english_stop","english_keywords"]}}, "text": sen}
-            #query = es.indices.analyze(body=mapping)
             for token_info in query['tokens']:
                 tmp = (re.sub(r'[0-9]+', "0", token_info['token']))   # 数値や空白は0に置換して語幹をsterm_listへ
                 if tmp not in stopwords():  # stopword除去
@@ -176,3 +166,31 @@ def stopwords():
     stopwords = nltk.corpus.stopwords.words('english')
     numeric = ['0']
     return stopwords + symbols + numeric
+
+def explain_patent(keyword_list, index_name, es):
+    """
+    類似特許検索 IDF などの詳細を持つクエリを得る
+    """
+
+    if index_name=="clef_patent":
+        #今は "description.p"で。いずれ、"abstract.p","claims.claim"]
+        _body = {
+            "query": {
+                "multi_match": {
+                    "fields": ["description.p"],
+                    "query": keyword_list
+                }
+            }
+        }
+    elif index_name=="clef_text":
+        _body = {
+            "query": {
+                "match": {"text" : keyword_list }
+            }
+        }
+    query = es.search(index=index_name, body=_body, size=1, request_timeout=150)
+
+    doc_id = query['hits']['hits'][0]['_id']
+    query = es.explain(index=index_name, body=_body, id=doc_id)
+
+    return query

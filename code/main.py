@@ -9,7 +9,7 @@ if __name__ == '__main__':
     start = time.time()
     param = 'clef'
     querydocument_list, docid_list, title_list = get_querydata(param)
-    keywordlist_memo = "keyword_list_4.txt"
+    keywordlist_memo = "keyword_list_noanalyze.txt"
     #index_name = "clef_patent"  # description,abstract,claimsに分かれている
     index_name = "clef_text"  # 全てが一つのテキストになっている
 
