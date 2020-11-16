@@ -203,7 +203,7 @@ if __name__ == '__main__':
         tmp_body["ucid"] = data["patent-document"].get("ucid")
         if(data["patent-document"].get("lang")!="EN"):
             #英語のみ
-            pass
+            continue
         tmp_body["lang"] = data["patent-document"].get("lang")
 
         if data["patent-document"].get("abstract",False):

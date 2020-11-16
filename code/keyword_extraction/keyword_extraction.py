@@ -10,10 +10,9 @@ import collections
 from operator import itemgetter
 import nltk
 
-def get_keyword (text,para,keynum):
+def get_keyword (text,para,keynum,index_name):
     #print(text)
     es = Elasticsearch("http://localhost:9200")
-    index_name = 'clef_patent'
     words = split_stem(text,es)
     words_fix = collections.Counter(words)  #重複数カウント
     values, counts = zip(*words_fix.most_common())  #valuesは重複削除したワード,countsは重複削除した出現回数
@@ -35,15 +34,28 @@ def get_keyword (text,para,keynum):
             #検索上位1件にhitした特許に含まれる文字列のみしかidf求められないのでループ
             
             words_query = ' '.join(tmp_values)
-            #今は "description.p"で。いずれ、"abstract.p", "claim.text"]
-            _body = {
-                "query": {
-                    "multi_match": {
-                        "fields": ["description.p"],
-                        "query": words_query 
+            #今は "description.p"で。いずれ、"abstract.p","claims.claim"]
+            
+            if index_name=="clef_patent":
+                #今は "description.p"で。いずれ、"abstract.p","claims.claim"]
+                _body = {
+                    "query": {
+                        "multi_match": {
+                            "fields": ["description.p"],
+                            "query": words_query 
+                        }
                     }
                 }
-            }
+            elif index_name=="clef_text":
+                _body = {
+                    "query": {
+                        "match": {
+                            "text" : words_query 
+                        }
+                    }
+                }
+            
+
             # IDFを求めるために適当なdocidのクエリを指定
             #何もhitしなかった時の条件を追加する
             query = es.search(index=index_name, body=_body, size=1, request_timeout=150)
@@ -55,7 +67,7 @@ def get_keyword (text,para,keynum):
                 break
             prev_docid = docid
             query = es.explain(index=index_name, id = docid,body=_body, request_timeout=150)
- 
+            
             for j in range(len(query['explanation']["details"])):
                 #print(tmp_values)
                 #if len(tmp_values)!=1:
@@ -89,7 +101,11 @@ def get_keyword (text,para,keynum):
     k1 = 1.2
     b = 0.75
     dl = len(text)
-    avgdl = 2865.817 
+    if index_name=="clef_patent":
+        avgdl = 2865.817 
+    elif index_name=="clef_text":
+        avgdl = 2223.4998
+        
 
     tfidf_data = []
     for value in(values_idf):
@@ -98,21 +114,11 @@ def get_keyword (text,para,keynum):
         tf = freq / (freq + k1 * (1 - b + b * dl / avgdl))
         tmp = (value[0], tf, value[1], tf*value[1])
         tfidf_data.append(tmp)
-    tdfidf_data = sorted(tfidf_data, key=itemgetter(3),reverse=True)    #tfidf順にソート
+    #tfidf_data = sorted(tfidf_data, key=itemgetter(3),reverse=True)    #tfidf順にソート
+    #return (tfidf_data[:100])
 
-
-
-
-
-
-    #print(json.dumps(query['explanation']['details'][0]['details'][0], indent=2))
-    #print(query['explanation']['details'][0]['details'][1]['value'])    #idf値
-    #print(query['explanation']['details'][0]['details'][0]['details'][1]['value'])    #idf値
-    #doc_id = query['hits']['hits'][0]['_id']
-    #query = es.explain(index='clef', body=_body, id=doc_id)
-
-
-    return (tfidf_data[:100])
+    tf_data = sorted(tfidf_data, key=itemgetter(1),reverse=True)    #tfidf順にソート
+    return (tf_data[:100])
 
 
     
