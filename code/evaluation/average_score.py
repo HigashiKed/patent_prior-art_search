@@ -4,7 +4,7 @@ prelファイルからscoreの平均を算出
 
 if __name__ == '__main__':   
 
-    with open('../../result/TFiDF_normal_cleftext_fix_2.prel', mode='r') as f:
+    with open('../../result/TFiDF_AND.prel', mode='r') as f:
         # 行ごとにすべて読み込んでリストデータにする
         lines = f.readlines()
         doc_avescore_list = []  #ドキュメントごとに平均スコアを格納

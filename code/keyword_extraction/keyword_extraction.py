@@ -67,6 +67,7 @@ def get_keyword (text,para,keynum,index_name):
                 break
             prev_docid = docid
             query = es.explain(index=index_name, id = docid,body=_body, request_timeout=150)
+            #print(json.dumps(query,indent=2))
             
             for j in range(len(query['explanation']["details"])):
                 #print(tmp_values)
@@ -100,7 +101,8 @@ def get_keyword (text,para,keynum,index_name):
     """
     k1 = 1.2
     b = 0.75
-    dl = len(text)
+    dl = len(words)
+    print(dl)
     if index_name=="clef_patent":
         avgdl = 2865.817 
     elif index_name=="clef_text":
@@ -133,21 +135,72 @@ def split_stem(text,es):
     sentences = text.split(".")  #カンマ区切りで分割
 
     words = []  #textに出力する文字のstem一覧
-    for sen in enumerate(sentences):
+    for sen in sentences:
         x = "stemming" # stemming / no_stemming
         if x == "stemming":
             #stemmingする時
+            """
+            my_analyzer = {
+                "settings": {
+                    "analysis": {
+                        "filter": {
+                            "english_stop": {"type": "stop","stopwords": "_english_" },
+                            "english_keywords": {"type": "keyword_marker", "keywords":   ["example"] },
+                            "english_stemmer": { "type": "stemmer","language": "english"},
+                            "english_possessive_stemmer": { "type": "stemmer", "language":   "possessive_english"}
+                        },
+                        "analyzer": {
+                            "rebuilt_english": {"tokenizer":  "standard","filter": ["english_possessive_stemmer","lowercase","english_stop","english_keywords","english_stemmer"]}
+
+                        }
+                    }
+                }
+            }
+
             stem_list = []
-            _body = {"analyzer": "english", "text": sen}
+            _body = {"analyzer":  my_analyzer, "text": sen}
             query = es.indices.analyze(body=_body)
             for token_info in query['tokens']:
                 tmp = (re.sub(r'[0-9]+', "0", token_info['token']))   # 数値や空白は0に置換して語幹をsterm_listへ
                 if tmp not in stopwords():  # stopword除去
-                    if re.search(r'[0-9]',tmp) is None:
-                        #数字が含まれない時
-                        stem_list.append(tmp)
+                    if len(tmp)>2:
+                        if re.search(r'[0-9]',tmp) is None:
+                            #数字が含まれない時
+                            stem_list.append(tmp)
             stem_list = [n for n in stem_list if n!='0']    #0を削除
+            print(stem_list)
+            print(len(stem_list))
+            """
+
+
+            stem_list = []
+            _body = {"analyzer":  "simple", "text": sen}
+            query = es.indices.analyze(body=_body)
+            for token_info in query['tokens']:
+                tmp = (re.sub(r'[0-9]+', "0", token_info['token']))   # 数値や空白は0に置換して語幹をsterm_listへ
+                if tmp not in stopwords():  # stopword除去
+                    if len(tmp)>2:
+                        if re.search(r'[0-9]',tmp) is None:
+                            #数字が含まれない時
+                            stem_list.append(tmp)
+            stem_list = [n for n in stem_list if n!='0']    #0を削除
+
+            """
+            stem_list = []
+            _body = {"analyzer":  "english", "text": sen}
+            query = es.indices.analyze(body=_body)
+            for token_info in query['tokens']:
+                tmp = (re.sub(r'[0-9]+', "0", token_info['token']))   # 数値や空白は0に置換して語幹をsterm_listへ
+                if tmp not in stopwords():  # stopword除去
+                    if len(tmp)>2:
+                        if re.search(r'[0-9]',tmp) is None:
+                            #数字が含まれない時
+                            stem_list.append(tmp)
+            stem_list = [n for n in stem_list if n!='0']    #0を削除
+            print(stem_list)
+            print(len(stem_list))
             #print(stem_list)
+            """
             words.extend(stem_list)
         elif x == "no_stemming":
             #stemmingしない時　単純にスペース区切りのstopwords除去
@@ -156,10 +209,6 @@ def split_stem(text,es):
             tmp = (re.sub(r'[0-9]+', "0", tmp))
             """
             stem_list = []
-            _body = {"analyzer": "english", "text": sen}
-            query = es.indices.analyze(body=_body)
-            #_body = {"analyzer": {"rebuilt_english": {"tokenizer":  "standard","filter": ["lowercase","english_stop","english_keywords"]}}, "text": sen}
-            #query = es.indices.analyze(body=mapping)
             for token_info in query['tokens']:
                 tmp = (re.sub(r'[0-9]+', "0", token_info['token']))   # 数値や空白は0に置換して語幹をsterm_listへ
                 if tmp not in stopwords():  # stopword除去
